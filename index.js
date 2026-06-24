@@ -2,13 +2,48 @@ import express from "express";
 import bodyParser from "body-parser";
 import pg from "pg";
 
+// Database Client using Connection String
 const db = new pg.Client({
   connectionString: process.env.DATABASE_URL || "postgres://postgres:suman@123@localhost:5432/world",
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
-const app = express();
-const port = 3000;
-db.connect();
+db.connect().then(async () => {
+  console.log("Database Connected successfully!");
+  try {
+    // 1. Live database mein table banana (agar nahi bani hai)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS capitals (
+        id SERIAL PRIMARY KEY,
+        country VARCHAR(100) NOT NULL,
+        capital VARCHAR(100) NOT NULL
+      );
+    `);
+
+    // 2. Check karna ki data pehle se hai ya nahi
+    const checkData = await db.query("SELECT COUNT(*) FROM capitals");
+    if (parseInt(checkData.rows[0].count) === 0) {
+      console.log("Inserting capitals into live database...");
+      
+      // Ye code automatic saara data bhar dega
+      await db.query(`
+        INSERT INTO capitals (country, capital) VALUES 
+        ('Saudi Arabia', 'Riyadh'),
+        ('India', 'New Delhi'),
+        ('France', 'Paris'),
+        ('United States', 'Washington'),
+        ('Japan', 'Tokyo'),
+        ('Germany', 'Berlin'),
+        ('United Kingdom', 'London'),
+        ('Canada', 'Ottawa'),
+        ('Australia', 'Canberra'),
+        ('Russia', 'Moscow');
+      `);
+      console.log("Data inserted successfully!");
+    }
+  } catch (err) {
+    console.error("Database setup error:", err);
+  }
+});
 
 let quiz = [];
 db.query("SELECT * FROM capitals",(err,res)=> {
